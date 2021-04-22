@@ -1,0 +1,86 @@
+---
+title: "Heatmap simulation"
+output:
+  pdf_document: default
+  html_document:
+    df_print: paged
+---
+
+## Purpose
+Simulation heatmaps. Goal is to be similar to ChIP-seq data, in order to make cartoons for publication/presentation schematics.
+
+# Loading Libraries
+```{r}
+heatmap_sim <- function(
+    nrows,
+    nbins,
+    p_geom = 0.1,
+    se_norm = 10,
+    jitter_factor = 3,
+    jitter_amount = 5
+    ){
+    
+    
+    require(ComplexHeatmap)
+    
+    ## Simulating Data
+    
+    # init df
+    sim.df <- data.frame(matrix(NA, nrow = nrows, ncol = nbins))
+    
+    # Populating with random data.
+    # For each row, first a random mean is picked from the geometric 
+    # distribution with probabiltiy p
+    # Then a number of observations equal to nbins / 2 is chosen by from 
+    # normal distribution given by this mean and se
+    # The resulting vector is sorted left to right. 
+    # The process is then repeated for the right side, using the same 
+    # parameters, but sorting right to left (so the 
+    # highest scores are in the center and lowest on the edges).
+    # Then any negative numbers are removed and set equal to 0.
+    # Finally some jitter noise is added
+    
+    # simulating data
+    for (i in 1:nrow(sim.df)) {
+        m = rgeom(1, p_geom)
+        left = sort(rnorm((nbins/2), m, se_norm), decreasing = FALSE)
+        right = sort(rnorm((nbins/2), m, se_norm), decreasing = TRUE)
+        left[left < 0] = 0
+        right[right < 0] = 0
+        sim.df[i,] <- 
+            c(
+                jitter(left, jitter_factor, jitter_amount), 
+                jitter(right, jitter_factor, jitter_amount)
+                )
+    }
+    
+    # Sorting by row sums
+    sim.df <- sim.df[order(rowSums(sim.df), decreasing = TRUE),]
+    
+    # Plotting Heatmap
+    hm <- Heatmap(
+        as.matrix(sim.df),
+        cluster_columns = F,
+        cluster_rows = F,
+        show_row_names = FALSE,
+        show_column_names = FALSE
+    )
+    return(hm)
+}
+
+```
+
+```{r}
+hm <- heatmap_sim(
+    nrows = 500, 
+    nbins = 100,
+    p_geom = 0.13,
+    se_norm = 40,
+    jitter_factor = 1,
+    jitter_amount = 3
+)
+hm
+
+```
+
+
